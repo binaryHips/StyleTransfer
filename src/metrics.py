@@ -1,5 +1,10 @@
 
 
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+
+
 class ContentLoss(nn.Module):
 
     def __init__(self, target,):
@@ -13,10 +18,6 @@ class ContentLoss(nn.Module):
     def forward(self, input):
         self.loss = F.mse_loss(input, self.target)
         return input
-
-
-
-
 
 
 def gram_matrix(input):

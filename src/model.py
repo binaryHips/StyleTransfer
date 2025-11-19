@@ -42,6 +42,7 @@ class Model:
     normalization_std = None
     
     cnn = None
+    device = None
     
     
     def load_images(self, content_path, style_path, target_size):
@@ -112,7 +113,7 @@ class Model:
         return optimizer
 
     def run_style_transfer_custom_input(self, input_img, num_steps=300,
-                        style_weight=1000000, content_weight=1):
+                        style_weight=1000000, content_weight=1, noise_strength = 0):
         """Run the style transfer."""
         print('Building the style transfer model..')
         model, style_losses, content_losses = self.get_style_model_and_losses()
@@ -133,9 +134,13 @@ class Model:
 
             def closure():
                 # correct the values of updated input image
-                with torch.no_grad():
-                    input_img.clamp_(0, 1)
 
+                with torch.no_grad():
+                    noise = torch.zeros(input_img.size()[0], input_img.size()[1], input_img.size()[2], input_img.size()[3], dtype=torch.float64)
+                    noise = noise + (0.1**0.5)*torch.randn(input_img.size()[0], input_img.size()[1], input_img.size()[2], input_img.size()[3])
+                    input_img.add(noise, alpha=noise_strength * 100.0)
+                    input_img.clamp_(0, 1)
+                    
                 optimizer.zero_grad()
                 model(input_img)
                 style_score = 0
@@ -170,14 +175,14 @@ class Model:
         return input_img
     
     def run_style_transfer(self, num_steps=300,
-                        style_weight=1000000, content_weight=1):
+                        style_weight=1000000, content_weight=1, noise_strength=0):
         input_img = self.content_image.clone()
         
-        return self.run_style_transfer_custom_input(input_img, num_steps, style_weight, content_weight)
+        return self.run_style_transfer_custom_input(input_img, num_steps, style_weight, content_weight, noise_strength)
     
     
     def run_style_transfer_custom_input_gif(self, input_img, gif_step=10, num_steps=300,
-                                            style_weight=1000000, content_weight=1):
+                                            style_weight=1000000, content_weight=1, noise_strength=0):
         
         gif_images = []
         """Run the style transfer."""
@@ -200,9 +205,12 @@ class Model:
 
             def closure():
                 # correct the values of updated input image
+                
                 with torch.no_grad():
+                    noise = torch.zeros(input_img.size()[0], input_img.size()[1], input_img.size()[2], input_img.size()[3], dtype=torch.float64)
+                    noise = noise + (0.1**0.5)*torch.randn(input_img.size()[0], input_img.size()[1], input_img.size()[2], input_img.size()[3])
+                    input_img.add(noise, alpha=noise_strength)
                     input_img.clamp_(0, 1)
-
                 optimizer.zero_grad()
                 model(input_img)
                 style_score = 0
@@ -218,7 +226,7 @@ class Model:
 
                 loss = style_score + content_score
                 loss.backward()
-
+                input_img.add(noise, alpha=noise_strength)
                 run[0] += 1
                 if run[0] % 50 == 0:
                     print("run {}:".format(run))
@@ -241,11 +249,11 @@ class Model:
         return gif_images
 
     def save_style_transfer_gif(self, out_path, gif_step=10, num_steps=300,
-                        style_weight=1000000, content_weight=1):
+                        style_weight=1000000, content_weight=1, noise_strength=0):
         input_img = self.content_image.clone()
         
         
-        res = self.run_style_transfer_custom_input_gif(input_img, gif_step, num_steps, style_weight, content_weight)
+        res = self.run_style_transfer_custom_input_gif(input_img, gif_step, num_steps, style_weight, content_weight, noise_strength)
         
         res[0].save(out_path, save_all=True, append_images=res[1:], duration=100, loop=0)
 

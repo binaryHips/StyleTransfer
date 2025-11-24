@@ -11,7 +11,7 @@ def image_loader(image, imsize):
         # transforms.Resize(imsize),  # scale imported image
         transforms.ToTensor()])  # transform it into a torch tensor
     
-    image = image.resize(imsize)
+    image = image.resize(imsize).convert('RGB')
     
     # fake batch dimension required to fit network's input dimensions
     image = loader(image).unsqueeze(0)

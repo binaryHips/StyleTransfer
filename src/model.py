@@ -43,7 +43,7 @@ class Model:
     
     cnn = None
     device = None
-    
+    silent = False
     
     def load_images(self, content_path, style_path, target_size):
         self.content_image, self.style_image = load_images(content_path, style_path, target_size)
@@ -114,8 +114,9 @@ class Model:
 
     def run_style_transfer_custom_input(self, input_img, num_steps=300,
                         style_weight=1000000, content_weight=1, noise_strength = 0):
-        """Run the style transfer."""
-        print('Building the style transfer model..')
+        
+        if not self.silent:
+            print('Building the style transfer model..')
         model, style_losses, content_losses = self.get_style_model_and_losses()
 
         # We want to optimize the input and not the model parameters so we
@@ -127,8 +128,8 @@ class Model:
         model.requires_grad_(False)
 
         optimizer = self.get_input_optimizer(input_img)
-
-        print('Optimizing..')
+        if not self.silent:
+            print('Optimizing..')
         run = [0]
         while run[0] <= num_steps:
 
@@ -158,7 +159,7 @@ class Model:
                 loss.backward()
 
                 run[0] += 1
-                if run[0] % 50 == 0:
+                if not self.silent and run[0] % 50 == 0:
                     print("run {}:".format(run))
                     print('Style Loss : {:4f} Content Loss: {:4f}'.format(
                         style_score.item(), content_score.item()))
@@ -185,8 +186,8 @@ class Model:
                                             style_weight=1000000, content_weight=1, noise_strength=0):
         
         gif_images = []
-        """Run the style transfer."""
-        print('Building the style transfer model..')
+        if not self.silent:
+            print('Building the style transfer model..')
         model, style_losses, content_losses = self.get_style_model_and_losses()
 
         # We want to optimize the input and not the model parameters so we
@@ -198,8 +199,8 @@ class Model:
         model.requires_grad_(False)
 
         optimizer = self.get_input_optimizer(input_img)
-
-        print('Optimizing..')
+        if not self.silent:
+            print('Optimizing..')
         run = [0]
         while run[0] <= num_steps:
 
@@ -228,7 +229,7 @@ class Model:
                 loss.backward()
                 input_img.add(noise, alpha=noise_strength)
                 run[0] += 1
-                if run[0] % 50 == 0:
+                if not self.silent and run[0] % 50 == 0:
                     print("run {}:".format(run))
                     print('Style Loss : {:4f} Content Loss: {:4f}'.format(
                         style_score.item(), content_score.item()))
@@ -257,3 +258,8 @@ class Model:
         
         res[0].save(out_path, save_all=True, append_images=res[1:], duration=100, loop=0)
 
+    def save_cnn(self, path):
+        torch.save(self.cnn, path)
+    
+    def load_cnn(self, path):
+        self.cnn = torch.load(path)

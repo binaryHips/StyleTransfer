@@ -2,9 +2,9 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
-
+import os.path
 from PIL import Image
-
+from finetune import Discriminator, weights_init
 import torchvision.transforms as transforms
 
 import copy
@@ -44,10 +44,15 @@ class Model:
     cnn = None
     device = None
     silent = False
-    
+
+    attached_discriminator = None
+    def __init__(self):
+        self.attached_discriminator = Discriminator(1).to(self.device)
+        self.attached_discriminator.apply(weights_init)
+
     def load_images(self, content_path, style_path, target_size):
         self.content_image, self.style_image = load_images(content_path, style_path, target_size)
-    
+        
 
     def get_style_model_and_losses(self,
                                 content_layers=content_layers_default,
@@ -259,7 +264,19 @@ class Model:
         res[0].save(out_path, save_all=True, append_images=res[1:], duration=100, loop=0)
 
     def save_cnn(self, path):
-        torch.save(self.cnn, path)
+        torch.save(self.cnn.state_dict(), path)
+        if self.attached_discriminator:
+            torch.save(self.attached_discriminator.state_dict(), path + ".discr")
     
-    def load_cnn(self, path):
-        self.cnn = torch.load(path)
+    def load_state_dict(self, path):
+        if not os.path.isfile(path):
+            print("Couldn't load cnn ! The file doesnt exist at path " + path)
+            exit()
+        self.cnn.load_state_dict(torch.load(path, weights_only=True))
+        self.cnn.eval()
+        if os.path.isfile(path + ".discr"):
+            self.attached_discriminator.load_state_dict(torch.load(path + ".discr", weights_only=True))
+            self.attached_discriminator.eval()
+            print("Loaded model along with discriminator")
+        else:
+            print("Loaded model")

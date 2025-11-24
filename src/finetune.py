@@ -4,7 +4,7 @@ import torch.optim as optim
 import torchvision
 import torchvision.transforms as transforms
 from torchvision import models
-from random import shuffle
+from random import shuffle, sample
 from utils import *
 from image import *
 import glob
@@ -59,13 +59,12 @@ def weights_init(m):
 
 def load_dataset(src, force_size = 512, max_n = 10000):
     images = []
-    n = 0
     s = len(glob.glob(src + "/*"))
     s = min(s, max_n)
-    for f in glob.iglob(src + "/*"):
+    vals = sample(list(glob.iglob(src + "/*")), s)
+    n = 0
+    for f in vals:
         try:
-            if n >= max_n:
-                break
             n += 1
             images.append(image_loader(Image.open(f), (force_size, force_size)))
             progress_bar(n, s, prefix = 'Loading images ', suffix = f'{n} /  {s}', length = 50)
@@ -75,15 +74,13 @@ def load_dataset(src, force_size = 512, max_n = 10000):
         progress_bar(n, s, prefix = 'Loading images ', suffix = f'{n} /  {s} (Could not load {s-n} images)', length = 50)
     print()
     return images
+
+
 # adapted from https://docs.pytorch.org/tutorials/beginner/dcgan_faces_tutorial.html
 def apply_gan(model, content_images, style_images, num_epochs):
     
-    # Create the Discriminator (we always have one gpu here)
-    netD = Discriminator(1).to(model.device)
-
-    # Apply the ``weights_init`` function to randomly initialize all weights
-    # like this: ``to mean=0, stdev=0.2``.
-    netD.apply(weights_init)
+    # get the dscriminator
+    netD = model.attached_discriminator
     
     # Initialize the ``BCELoss`` function
     criterion = nn.BCELoss()
@@ -100,7 +97,7 @@ def apply_gan(model, content_images, style_images, num_epochs):
     D_losses = []
     
     model.silent = True
-    
+
     for epoch in range(num_epochs):
         shuffle(style_images)
         for i in range(len(content_images)):
@@ -160,16 +157,12 @@ def apply_gan(model, content_images, style_images, num_epochs):
             
             
             progress_bar(i, len(content_images)-1,
-                         prefix = f'Epoch {epoch:<3}/{num_epochs:<3} ',
+                         prefix = f'Epoch {(epoch+1):<3}/{num_epochs:<3} ',
                          suffix = f'errG {errG.detach().item():.2f}, errD {errD.detach().item():.2f}',
                          length = 50)
+            # Save Losses for plotting later
+            G_losses.append(errG.detach().item())
+            D_losses.append(errD.detach().item())
         print()
-        # Save Losses for plotting later
-        G_losses.append(errG.detach().item())
-        D_losses.append(errD.detach().item())
     print(" (Finished)")
-
-def save_model(model, name):
-    # Save the fine-tuned model
-    torch.save(model.state_dict(), f'models/{name}.pth')
     

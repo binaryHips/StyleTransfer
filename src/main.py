@@ -15,14 +15,17 @@ torch.set_default_device(device)
 content_path = "../assets/lake.jpg"
 style_path = "../assets/lsd_dream_emulator.jpg"
 out_dir = "../output/"
+model_souce = "../models/vgg_finetuned_step1.pth"
 
 model = Model()
 model.load_images(content_path, style_path, targetSize)
-model.cnn = vgg19(weights=VGG19_Weights.DEFAULT).features.eval()
 model.device = device
 model.normalization_mean = torch.tensor([0.485, 0.456, 0.406])
 model.normalization_std = torch.tensor([0.229, 0.224, 0.225])
+model.cnn = vgg19(weights=VGG19_Weights.DEFAULT).features.eval()
 
+if model_souce != "":
+    model.load_state_dict(model_souce)
 
 
 """
@@ -36,15 +39,14 @@ imsave(output, "../output/test.jpg")
 """
 
 
-
 ## Fine tune using gan
+if finetune_pass:
+    style_dataset = load_dataset("../assets/datasets/dataset_updated/training_set/iconography", 64, 100)
+    content_dataset = load_dataset("../assets/datasets/data/human", 64, 100)
 
-style_dataset = load_dataset("../assets/datasets/dataset_updated/training_set/iconography", 64, 100)
-content_dataset = load_dataset("../assets/datasets/data/human", 64, 100)
+    apply_gan(model, content_dataset, style_dataset, 5)
 
-apply_gan(model, content_dataset, style_dataset, 10)
-
-model.save_cnn("../models/vgg_finetuned.pth")
+    model.save_cnn("../models/vgg_finetuned_step1.pth")
 """
 model.save_style_transfer_gif(
     out_dir + "house2.gif",

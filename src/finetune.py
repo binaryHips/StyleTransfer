@@ -15,7 +15,7 @@ import glob
 ndf = 64
 
 # Learning rate for optimizers
-lr = 0.0002
+lr = 0.0004
 
 # Beta1 hyperparameter for Adam optimizers
 beta1 = 0.5
@@ -77,7 +77,17 @@ def load_dataset(src, force_size = 512, max_n = 10000):
 
 
 # adapted from https://docs.pytorch.org/tutorials/beginner/dcgan_faces_tutorial.html
-def apply_gan(model, content_images, style_images, num_epochs):
+def apply_gan(model, content_images, style_images, num_epochs, path_of_backups = "", bench_content = "", bench_style = ""):
+    
+    # first bench step, for further comparison
+    if bench_content != "" and bench_style != "":
+        model.content_image, model.style_image = load_images(bench_content, bench_style, 512)
+        fake = model.run_style_transfer(
+            num_steps=500,
+            style_weight=10000000,
+            content_weight=1
+            )
+        imsave(fake, path_of_backups + "/epoch_0.png")
     
     # get the dscriminator
     netD = model.attached_discriminator
@@ -97,7 +107,7 @@ def apply_gan(model, content_images, style_images, num_epochs):
     D_losses = []
     
     model.silent = True
-
+    
     for epoch in range(num_epochs):
         shuffle(style_images)
         for i in range(len(content_images)):
@@ -123,7 +133,7 @@ def apply_gan(model, content_images, style_images, num_epochs):
             model.content_image = content_images[i]
             model.style_image = style_images[i]
             fake = model.run_style_transfer(
-                num_steps=50,
+                num_steps=500,
                 style_weight=10000000,
                 content_weight=1
                 )
@@ -163,6 +173,17 @@ def apply_gan(model, content_images, style_images, num_epochs):
             # Save Losses for plotting later
             G_losses.append(errG.detach().item())
             D_losses.append(errD.detach().item())
+        
+        if epoch > 0 and (epoch+1) % 10 == 0 and path_of_backups != "":
+                if bench_content != "" and bench_style != "":
+                    model.content_image, model.style_image = load_images(bench_content, bench_style, 512)
+                    fake = model.run_style_transfer(
+                        num_steps=500,
+                        style_weight=10000000,
+                        content_weight=1
+                        )
+                    imsave(fake, path_of_backups + "/epoch_" + str(epoch) + ".png")
+                model.save_cnn(path_of_backups + "/model_epoch_" + str(epoch) + ".pth")
+            
         print()
     print(" (Finished)")
-    

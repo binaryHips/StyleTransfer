@@ -31,7 +31,6 @@ class Normalization(nn.Module):
 content_layers_default = ['conv_4']
 style_layers_default = ['conv_1', 'conv_2', 'conv_3', 'conv_4', 'conv_5']
 
-
 class Model:
     
     content_image = None
@@ -114,9 +113,11 @@ class Model:
 
     def get_input_optimizer(self, input_img):
         # this line to show that input is a parameter that requires a gradient
-        optimizer = optim.LBFGS([input_img])
+        optimizer = optim.Adam([input_img], lr=0.1)
         return optimizer
 
+    # based on https://docs.pytorch.org/tutorials/advanced/neural_style_tutorial.html
+    
     def run_style_transfer_custom_input(self, input_img, num_steps=300,
                         style_weight=1000000, content_weight=1, noise_strength = 0):
         
